@@ -12,36 +12,28 @@
 
 ### Configure Alpine Hosts
 
-Static IPs were assigned on both Alpine hosts.
+Static IPs were assigned on both Alpine hosts by editing `/etc/network/interfaces` to make the changes survive reboot.
 
-On AlpineLinux-1:
-```bash
-ip addr add 10.0.0.1/24 dev eth0
-```
- 
+**AlpineLinux-1 `/etc/network/interfaces`:**
 ```text
-root@alpine-1:~# ip a show eth0
-2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
-    link/ether 0c:12:06:42:00:00 brd ff:ff:ff:ff:ff:ff
-    inet 10.0.0.1/24 scope global eth0
-       valid_lft forever preferred_lft forever
-    inet6 fe80::e12:6ff:fe42:0/64 scope link
-       valid_lft forever preferred_lft forever
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+  address 10.0.0.1
+  netmask 255.255.255.0
 ```
  
-On AlpineLinux-2:
-```bash
-ip addr add 10.0.0.2/24 dev eth0
-```
- 
+**AlpineLinux-2 `/etc/network/interfaces`:**
 ```text
-root@alpine-2:~# ip a show eth0
-2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
-    link/ether 0c:3e:1f:dc:00:00 brd ff:ff:ff:ff:ff:ff
-    inet 10.0.0.2/24 scope global eth0
-       valid_lft forever preferred_lft forever
-    inet6 fe80::e3e:1fff:fedc:0/64 scope link
-       valid_lft forever preferred_lft forever
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+  address 10.0.0.2
+  netmask 255.255.255.0
 ```
  
 ### Configure MikroTik Switches
@@ -103,6 +95,112 @@ After repeating this on all four MikroTik VMs, `ping 10.0.0.2` on alpine-1 and `
  
 ![Ping request/reply Wireshark](./assets/ping_capture_test.png)
 
+### Exported Configuration of the Switches
+
+**mikrotik-1:**
+```text
+[admin@mikrotik-1] > export
+# 2026-09-25 15:18:47 by RouterOS 7.19.4
+# system id = 2+FfVjAsZ5F
+#
+/interface bridge
+add name=bridge1
+/interface ethernet
+set [ find default-name=ether1 ] disable-running-check=no
+set [ find default-name=ether2 ] disable-running-check=no
+set [ find default-name=ether3 ] disable-running-check=no
+set [ find default-name=ether4 ] disable-running-check=no
+/port
+set 0 name=serial0
+/interface bridge port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+/ip dhcp-client
+# DHCP client can not run on slave or passthrough interface!
+add interface=ether1
+/system identity
+set name=mikrotik-1
+```
+
+**mikrotik-2:**
+```text
+[admin@mikrotik-2] > export
+# 2026-09-25 15:28:00 by RouterOS 7.19.4
+# system id = fZUCpZwANcC
+#
+/interface bridge
+add name=bridge1
+/interface ethernet
+set [ find default-name=ether1 ] disable-running-check=no
+set [ find default-name=ether2 ] disable-running-check=no
+set [ find default-name=ether3 ] disable-running-check=no
+set [ find default-name=ether4 ] disable-running-check=no
+/port
+set 0 name=serial0
+/interface bridge port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+/ip dhcp-client
+# DHCP client can not run on slave or passthrough interface!
+add interface=ether1
+/system identity
+set name=mikrotik-2
+```
+
+**mikrotik-3:**
+```text
+[admin@mikrotik-3] > export
+# 2026-09-25 15:28:05 by RouterOS 7.19.4
+# system id = fT5QtN2fq1E
+#
+/interface bridge
+add name=bridge1
+/interface ethernet
+set [ find default-name=ether1 ] disable-running-check=no
+set [ find default-name=ether2 ] disable-running-check=no
+set [ find default-name=ether3 ] disable-running-check=no
+set [ find default-name=ether4 ] disable-running-check=no
+/port
+set 0 name=serial0
+/interface bridge port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+/ip dhcp-client
+# DHCP client can not run on slave or passthrough interface!
+add interface=ether1
+/system identity
+set name=mikrotik-3
+```
+
+**mikrotik-4:**
+```text
+[admin@mikrotik-4] > export
+# 2026-09-25 15:28:08 by RouterOS 7.19.4
+# system id = AoxFsPrzEUE
+#
+/interface bridge
+add name=bridge1
+/interface ethernet
+set [ find default-name=ether1 ] disable-running-check=no
+set [ find default-name=ether2 ] disable-running-check=no
+set [ find default-name=ether3 ] disable-running-check=no
+set [ find default-name=ether4 ] disable-running-check=no
+/port
+set 0 name=serial0
+/interface bridge port
+add bridge=bridge1 interface=ether1
+add bridge=bridge1 interface=ether2
+add bridge=bridge1 interface=ether3
+/ip dhcp-client
+# DHCP client can not run on slave or passthrough interface!
+add interface=ether1
+/system identity
+set name=mikrotik-4
+```
+
 ---
 
 ## Finding the built STP topology
@@ -158,7 +256,7 @@ On the diagram:
 - **AP** – alternate port
 - GNS3's automatic port labels start numbering from 0, while the MikroTik CLI numbers the same interfaces starting from 1 (e.g. GNS3's `e0` = RouterOS's `ether1`).
 
-The topology was additionally verified by running `ping 10.0.0.2` on alpine-1 and checking all inter-switch links with Wireshark. Traffic was seen on every link highlighted in the diagram (on the mikrotik-1 <-> mikrotik-2 link, only for the first ping, since that frame was still unknown unicast).
+The topology was additionally verified by running `ping 10.0.0.2` on alpine-1 and checking all inter-switch links with Wireshark. Traffic was seen on every link highlighted in the diagram (on the mikrotik-1 <-> mikrotik-2 link, only for the first ping, since that frame was unknown unicast).
 
 ---
 
