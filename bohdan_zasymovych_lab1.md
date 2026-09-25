@@ -355,5 +355,5 @@ Picture below shows states of FDBs before and after ping on each of the MikroTik
    * Before physically removing a switch or cable, the cost of the path going through it can be increased so the topology changes smoothly instead of a sudden change on removal.
    * In big networks there may be a need to explicitly set root and paths to have a predictable layout, which is easier to document and debug if needed, rather than having a layout created almost randomly by default priorities and MAC addresses of the devices.
 
-4. **Is there sence to turn on STP if there are only single switch with multiple ports**
+4. **Is there sense to turn on STP if there is only single switch with multiple ports?**
    Yes, there is sense to turn on STP. Despite the fact that a loop between multiple switches cannot be created in this case, it is possible to create a loop within a single switch by connecting two of its own ports together with a cable. Such a situation should be rare, but it is possible due to human error.
